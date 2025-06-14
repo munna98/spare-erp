@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Menu, X } from 'lucide-react';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import Dashboard from '../../pages/Dashboard';

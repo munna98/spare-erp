@@ -5,3 +5,5 @@
 | `docs/`                  | As soon as you have setup notes or schema details                  | Keep DB design, feature roadmap, setup guide |
 | `scripts/`               | When you automate backups, seeding, or deploys                     | Organize one-off utilities or CLI tools      |
 | `tests/`                 | When you add Vitest/Jest tests                                     | Clean separation of business tests           |
+
+

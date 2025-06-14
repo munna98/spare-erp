@@ -49,10 +49,88 @@ D:\uae-spare-parts-erp>node print-structure.js
       📁 utils
         📄 auth.ts
         📄 jwt.ts
-        📄 password.ts
-        📄 prisma.ts
     📄 tsconfig.json
 📄 package.json
+
+
+D:\uae-spare-parts-erp>node print-structure.js
+📄 .gitignore
+📁 apps
+  📁 desktop
+    📁 electron
+      📄 main.ts
+      📄 preload.ts
+      📄 tsconfig.json
+    📄 npm
+    📄 package-claude-old.json
+    📄 package-lock.json
+    📄 package.json
+    📄 postcss.config.mjs
+    📁 src
+      📄 App.tsx
+      📁 components
+        📁 auth
+          📄 LoginForm.tsx
+        📁 layout
+          📄 Header.tsx
+          📄 Layout.tsx
+          📄 Sidebar.tsx
+        📁 ui
+          📄 avatar.tsx
+          📄 badge.tsx
+          📄 button.tsx
+          📄 card.tsx
+          📄 dropdown.tsx
+          📄 form.tsx
+          📄 input.tsx
+      📄 index.css
+      📄 index.html
+      📁 lib
+        📄 trpc.ts
+        📄 utils.ts
+      📄 main.tsx
+      📁 pages
+        📄 Dashboard.tsx
+      📁 store
+        📄 auth.ts
+    📄 tailwind.config.js
+    📄 tsconfig.json
+    📄 tsconfig.tsbuildinfo
+    📄 vite.config.ts
+  📁 server
+    📄 .env
+    📄 .gitignore
+    📄 package-lock.json
+    📄 package.json
+    📁 prisma
+      📁 migrations
+        📁 20250613124313_init
+          📄 migration.sql
+        📁 20250613124544_make_warehouse_code_unique
+          📄 migration.sql
+        📄 migration_lock.toml
+      📄 schema.prisma
+      📄 seed.js
+    📁 src
+      📄 context.ts
+      📄 index.ts
+      📁 routers
+        📄 auth.ts
+        📄 index.ts
+        📄 inventory.ts
+        📄 parts.ts
+      📄 trpc.ts
+      📁 utils
+        📄 auth.ts
+        📄 jwt.ts
+
+    📄 tsconfig.json
+📄 package.json
+📁 packages
+  📁 shared
+    📄 tsconfig.json
+📄 tsconfig.base.json
+📄 tsconfig.build.json
 
 
 

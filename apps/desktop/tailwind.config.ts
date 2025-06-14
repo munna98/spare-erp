@@ -1,9 +1,11 @@
-/** @type {import('tailwindcss').Config} */
-export default {
-  darkMode: ["class"],
+import type { Config } from "tailwindcss"
+import animate from "tailwindcss-animate"
+
+const config: Config = {
+  darkMode: "class", // enables dark mode via class
   content: [
-    './src/**/*.{ts,tsx}',
-    './src/components/**/*.{ts,tsx}',
+    "./src/**/*.{ts,tsx}", // all frontend files
+    "../../packages/ui/**/*.{ts,tsx}", // if you use shared components (optional)
   ],
   theme: {
     container: {
@@ -54,14 +56,17 @@ export default {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      fontFamily: {
+        sans: ["Inter", "sans-serif"],
+      },
       keyframes: {
         "accordion-down": {
-          from: { height: 0 },
+          from: { height: "0" },
           to: { height: "var(--radix-accordion-content-height)" },
         },
         "accordion-up": {
           from: { height: "var(--radix-accordion-content-height)" },
-          to: { height: 0 },
+          to: { height: "0" },
         },
       },
       animation: {
@@ -70,5 +75,7 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [animate], // enables shadcn animations
 }
+
+export default config

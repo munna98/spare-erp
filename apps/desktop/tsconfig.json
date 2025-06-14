@@ -1,3 +1,4 @@
+// apps/destop/tsconfig.json
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
@@ -9,16 +10,13 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "react-jsx",
-
-    // ✅ Required for project references
-    "composite": true,
-    "noEmit": false,
-
+    "composite": false,
+    "noEmit": true,
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-
+    "tsBuildInfoFile": "./dist/tsconfig.tsbuildinfo",
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
@@ -27,6 +25,7 @@
       "@/hooks/*": ["./src/hooks/*"],
       "@/store/*": ["./src/store/*"],
       "@/types/*": ["./src/types/*"],
+      "@server/*": ["../server/src/*"],
       "@shared/*": ["../../packages/shared/src/*"]
     }
   },
@@ -34,6 +33,7 @@
   "exclude": ["node_modules", "dist", "dist-electron"],
   "references": [
     { "path": "./electron/tsconfig.json" },
-    { "path": "../../packages/shared" }
+    { "path": "../../packages/shared" },
+    { "path": "../server" }
   ]
 }

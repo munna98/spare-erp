@@ -4,21 +4,3 @@ node_modules
 
 /generated/prisma
 
-DATABASE_URL="postgresql://munna:munna12345@localhost:5432/uae_spare_parts_erp"
-JWT_SECRET="munnamadeerpforlavender"
-JWT_EXPIRES_IN="7d"
-PORT=3001
-
-
-# Frontend URL (for CORS in production)
-FRONTEND_URL="http://localhost:3000"
-
-# File Upload Settings
-MAX_FILE_SIZE="10mb"
-UPLOAD_DIR="uploads"
-
-# Email Configuration (for future use)
-SMTP_HOST=""
-SMTP_PORT=""
-SMTP_USER=""
-SMTP_PASSWORD=""

@@ -1,12 +1,29 @@
 {
   "name": "uae-spare-parts-erp",
   "version": "1.0.0",
-  "main": "index.js",
+  "private": true,
+  "description": "UAE Spare Parts ERP System - Fullstack Monorepo",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:desktop\"",
+    "dev:server": "npm run dev --workspace=apps/server",
+    "dev:desktop": "npm run dev --workspace=apps/desktop",
+    "build": "npm run build --workspace=apps/server && npm run build --workspace=apps/desktop",
+    "clean": "rimraf apps/*/dist apps/*/dist-electron",
+    "format": "prettier --write .",
+    "postinstall": "npm install --workspaces",
+    "studio": "npm run db:studio --workspace=apps/server"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": ""
+  "workspaces": [
+    "apps/desktop",
+    "apps/server",
+    "packages/shared"
+  ],
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "prettier": "^3.2.5",
+    "rimraf": "^5.0.5"
+  },
+  "dependencies": {
+    "tailwindcss-animate": "^1.0.7"
+  }
 }

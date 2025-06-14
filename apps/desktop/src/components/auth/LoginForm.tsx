@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { Eye, EyeOff, Loader2, User, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import { trpc } from '../../lib/trpc';
@@ -10,24 +9,18 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Card, CardContent, CardHeader } from '../ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
+import { z } from 'zod';
 
-// Validation schema
 const loginSchema = z.object({
-  email: z
-    .string()
-    .min(1, 'Email is required')
-    .email('Please enter a valid email address'),
-  password: z
-    .string()
-    .min(1, 'Password is required')
-    .min(6, 'Password must be at least 6 characters'),
+  email: z.string().email('Invalid email format'),
+  password: z.string().min(1, 'Password is required'),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
 const LoginForm: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
-  const { setUser, setToken } = useAuthStore();
+  const { login } = useAuthStore();
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -39,12 +32,11 @@ const LoginForm: React.FC = () => {
 
   const loginMutation = trpc.auth.login.useMutation({
     onSuccess: (data) => {
-      setUser(data.user);
-      setToken(data.token);
-      localStorage.setItem('auth-token', data.token);
-      toast.success('Welcome back!', {
-        description: `Logged in as ${data.user.email}`,
+      login({
+        token: data.token,
+        user: data.user,
       });
+      toast.success(data.message || 'Login successful');
     },
     onError: (error) => {
       toast.error('Login failed', {
@@ -62,7 +54,7 @@ const LoginForm: React.FC = () => {
   };
 
   return (
-    <Card className="w-full shadow-lg border-0 bg-white">
+    <Card className="w-full max-w-md shadow-lg border-0 bg-white">
       <CardHeader className="space-y-1 pb-6">
         <div className="flex items-center justify-center w-16 h-16 mx-auto bg-blue-100 rounded-full mb-4">
           <User className="w-8 h-8 text-blue-600" />
@@ -76,8 +68,9 @@ const LoginForm: React.FC = () => {
       </CardHeader>
 
       <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        {/* Use Form with required form and onSubmit props */}
+        <Form form={form} onSubmit={onSubmit}>
+          <div className="space-y-4">
             <FormField
               control={form.control}
               name="email"
@@ -150,7 +143,7 @@ const LoginForm: React.FC = () => {
                 'Sign In'
               )}
             </Button>
-          </form>
+          </div>
         </Form>
 
         <div className="mt-6 text-center">

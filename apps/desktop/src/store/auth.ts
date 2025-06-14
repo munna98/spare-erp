@@ -1,65 +1,81 @@
+// store/auth.ts
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-
-interface User {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: string;
-  companyId: string;
-  branchId: string | null;
-}
+import { User } from '@shared/types';
 
 interface AuthState {
-  user: User | null | undefined;
+  user: User | null;
   token: string | null;
   isAuthenticated: boolean;
-  login: (token: string, user: User) => void;
+  
+  // Actions
+  login: (data: { token: string; user: User }) => void;
   logout: () => void;
+  setToken: (token: string) => void;
+  setUser: (user: User) => void;
   updateUser: (userData: Partial<User>) => void;
-  checkAuth: () => void;
-  setUser: (user: User) => void; // Add this
-  clearAuth: () => void; // Add this
+  clearAuth: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
-      user: undefined,
+      user: null,
       token: null,
       isAuthenticated: false,
-      login: (token: string, user: User) => {
-        localStorage.setItem('auth-token', token);
-        set({ user, token, isAuthenticated: true });
+
+      login: (data) => {
+        localStorage.setItem('auth-token', data.token);
+        set({
+          user: data.user,
+          token: data.token,
+          isAuthenticated: true,
+        });
       },
+
       logout: () => {
         localStorage.removeItem('auth-token');
-        set({ user: null, token: null, isAuthenticated: false });
+        set({
+          user: null,
+          token: null,
+          isAuthenticated: false,
+        });
       },
-      updateUser: (userData: Partial<User>) => {
+
+      setToken: (token) => {
+        localStorage.setItem('auth-token', token);
+        set({ token });
+      },
+
+      setUser: (user) => set({ user }),
+
+      updateUser: (userData) => {
         const currentUser = get().user;
         if (currentUser) {
-          set({ user: { ...currentUser, ...userData } });
+          set({
+            user: {
+              ...currentUser,
+              ...userData,
+              company: userData.company || currentUser.company,
+            },
+          });
         }
       },
-      checkAuth: () => {
-        const token = localStorage.getItem('auth-token');
-        const storedUser = get().user;
-        if (token && storedUser && typeof storedUser === 'object') {
-          set({ token, user: storedUser, isAuthenticated: true });
-        } else {
-          set({ user: null, token: null, isAuthenticated: false });
-        }
+
+      clearAuth: () => {
+        localStorage.removeItem('auth-token');
+        set({
+          user: null,
+          token: null,
+          isAuthenticated: false,
+        });
       },
-      setUser: (user: User) => set({ user, isAuthenticated: true }), // Add this
-      clearAuth: () => set({ user: null, token: null, isAuthenticated: false }), // Add this
     }),
     {
       name: 'auth-storage',
       partialize: (state) => ({
-        user: state.user,
         token: state.token,
+        user: state.user,
         isAuthenticated: state.isAuthenticated,
       }),
     }

@@ -1,9 +1,10 @@
+// apps/desktop/src/lib/trpc.ts
 import { createTRPCReact } from '@trpc/react-query';
 import { createTRPCProxyClient, httpBatchLink } from '@trpc/client';
-import type { AppRouter } from '../../../server/src/routers'; 
+import type { AppRouter } from '@server/routers';
 
-// For React Query
-export const trpc = createTRPCReact<AppRouter>();
+// For React Query - with explicit type annotation
+export const trpc = createTRPCReact<AppRouter>() as ReturnType<typeof createTRPCReact<AppRouter>>;
 
 // Optional: for direct use in utilities (e.g., seeding scripts or non-React logic)
 export const trpcClient = createTRPCProxyClient<AppRouter>({
@@ -16,4 +17,4 @@ export const trpcClient = createTRPCProxyClient<AppRouter>({
       },
     }),
   ],
-});
+}) as ReturnType<typeof createTRPCProxyClient<AppRouter>>;
