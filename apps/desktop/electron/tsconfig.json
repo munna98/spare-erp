@@ -1,0 +1,18 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",             
+    "module": "ES2022",             
+    "lib": ["ES2022", "DOM"],       
+    "outDir": "../dist-electron",
+    "declaration": true,
+    "noEmit": false,
+    "skipLibCheck": true,
+    "moduleResolution": "node",
+    "esModuleInterop": true,       
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "composite": true
+  },
+  "include": ["./**/*"]
+}

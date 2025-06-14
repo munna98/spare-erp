@@ -1,0 +1,39 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+
+    // ✅ Required for project references
+    "composite": true,
+    "noEmit": false,
+
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@/components/*": ["./src/components/*"],
+      "@/lib/*": ["./src/lib/*"],
+      "@/hooks/*": ["./src/hooks/*"],
+      "@/store/*": ["./src/store/*"],
+      "@/types/*": ["./src/types/*"],
+      "@shared/*": ["../../packages/shared/src/*"]
+    }
+  },
+  "include": ["src/**/*", "electron/**/*"],
+  "exclude": ["node_modules", "dist", "dist-electron"],
+  "references": [
+    { "path": "./electron/tsconfig.json" },
+    { "path": "../../packages/shared" }
+  ]
+}

@@ -1,0 +1,15 @@
+pass:spare12345
+
+CREATE USER munna WITH PASSWORD 'munna12345';
+
+GRANT ALL PRIVILEGES ON DATABASE uae_spare_parts_erp TO munna;
+
+GRANT ALL ON SCHEMA public TO munna;
+
+psql -U munna -d uae_spare_parts_erp -h localhost
+
+ALTER ROLE munna CREATEDB;
+
+GRANT USAGE, CREATE ON SCHEMA public TO munna;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO munna;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO munna;
