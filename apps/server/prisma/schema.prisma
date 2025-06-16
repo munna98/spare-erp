@@ -1,6 +1,3 @@
-// This is our Prisma schema file for Automobile Spare Parts ERP
-// Learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -36,6 +33,7 @@ model Company {
   settings       Settings[]
   users          User[]
   auditLogs      AuditLog[]
+  bankAccounts   BankAccount[]
 
   @@map("companies")
 }
@@ -116,9 +114,9 @@ model Settings {
 
 model CodeSequence {
   id         String   @id @default(cuid())
-  entityType String // e.g., "Part", "Supplier", "Customer"
+  entityType String // e.g., "Part", "Supplier", "Customer", "StockLot"
   branchId   String? // Optional, for branch-specific sequences
-  prefix     String // e.g., "PART", "SUP"
+  prefix     String // e.g., "PART", "SUP", "LOT"
   lastNumber Int      @default(0)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -147,6 +145,132 @@ model VoucherSequence {
 }
 
 // ================================
+// BANK ACCOUNT MANAGEMENT
+// ================================
+
+model BankAccount {
+  id          String   @id @default(cuid())
+  companyId   String
+  bankName    String
+  accountNumber String @unique
+  iban        String? @unique
+  branchName  String?
+  swiftCode   String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company            Company             @relation(fields: [companyId], references: [id])
+  payments           Payment[]
+  receipts           Receipt[]
+  bankReconciliations BankReconciliation[]
+  cheques            Cheque[]
+
+  @@map("bank_accounts")
+}
+
+// ================================
+// BANK RECONCILIATION
+// ================================
+
+model BankReconciliation {
+  id              String   @id @default(cuid())
+  bankAccountId   String
+  statementDate   DateTime
+  startDate       DateTime
+  endDate         DateTime
+  openingBalance  Decimal  @db.Decimal(15, 4)
+  closingBalance  Decimal  @db.Decimal(15, 4)
+  reconciledBalance Decimal @db.Decimal(15, 4) @default(0) // Sum of reconciled transactions
+  status          ReconciliationStatus @default(DRAFT)
+  remarks         String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  createdById     String?
+  updatedById     String?
+
+  bankAccount     BankAccount         @relation(fields: [bankAccountId], references: [id])
+  createdBy       User?               @relation("BankReconciliationCreatedBy", fields: [createdById], references: [id])
+  updatedBy       User?               @relation("BankReconciliationUpdatedBy", fields: [updatedById], references: [id])
+  transactions    ReconciliationTransaction[]
+
+  @@map("bank_reconciliations")
+}
+
+model ReconciliationTransaction {
+  id                  String   @id @default(cuid())
+  bankReconciliationId String
+  transactionType     String // PAYMENT, RECEIPT, BANK_CREDIT, BANK_DEBIT, CHEQUE_ISSUED, CHEQUE_RECEIVED
+  referenceId         String? // Links to Payment.id, Receipt.id, Cheque.id, or external transaction ID
+  transactionDate     DateTime
+  description         String?
+  amount              Decimal  @db.Decimal(15, 4)
+  isReconciled        Boolean  @default(false)
+  reconciledDate      DateTime?
+  bankStatementRef    String? // Reference from bank statement (e.g., transaction ID)
+  chequeNumber        String? // Cheque number for cheque-related transactions
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  bankReconciliation  BankReconciliation @relation(fields: [bankReconciliationId], references: [id])
+
+  @@map("reconciliation_transactions")
+}
+
+// ================================
+// CHEQUE MANAGEMENT
+// ================================
+
+model Cheque {
+  id              String       @id @default(cuid())
+  bankAccountId   String
+  chequeNumber    String
+  chequeType      ChequeType   // ISSUED or RECEIVED
+  payee           String?      // For issued cheques (supplier name)
+  payer           String?      // For received cheques (customer name)
+  supplierId      String?      // Links to Supplier for issued cheques
+  customerId      String?      // Links to Customer for received cheques
+  amount          Decimal      @db.Decimal(15, 4)
+  issueDate       DateTime     // Date cheque is issued or received
+  chequeDate      DateTime     // Date on cheque (for post-dated cheques)
+  status          ChequeStatus @default(ISSUED)
+  referenceNo     String?      // External reference (e.g., bank transaction ID)
+  remarks         String?      // Notes for bounced cheques or other issues
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  createdById     String?
+  updatedById     String?
+
+  bankAccount     BankAccount          @relation(fields: [bankAccountId], references: [id])
+  supplier        Supplier?            @relation(fields: [supplierId], references: [id], name: "ChequeToSupplier")
+  customer        Customer?            @relation(fields: [customerId], references: [id], name: "ChequeToCustomer")
+  payment         Payment?             @relation(name: "ChequeToPayment")
+  paymentId       String?              @unique
+  receipt         Receipt?             @relation(name: "ChequeToReceipt")
+  receiptId       String?              @unique
+  statusHistory   ChequeStatusHistory[]
+  createdBy       User?                @relation("ChequeCreatedBy", fields: [createdById], references: [id])
+  updatedBy       User?                @relation("ChequeUpdatedBy", fields: [updatedById], references: [id])
+
+  @@unique([bankAccountId, chequeNumber])
+  @@map("cheques")
+}
+
+model ChequeStatusHistory {
+  id          String       @id @default(cuid())
+  chequeId    String
+  status      ChequeStatus
+  changeDate  DateTime     @default(now())
+  remarks     String?      // Reason for status change (e.g., why bounced)
+  createdById String?
+
+  cheque      Cheque       @relation(fields: [chequeId], references: [id])
+  createdBy   User?        @relation(fields: [createdById], references: [id])
+
+  @@map("cheque_status_history")
+}
+
+// ================================
 // USER MANAGEMENT
 // ================================
 
@@ -162,37 +286,42 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  company                   Company             @relation(fields: [companyId], references: [id])
-  branch                    Branch?             @relation(fields: [branchId], references: [id])
-  employee                  Employee?           @relation
+  company                   Company                     @relation(fields: [companyId], references: [id])
+  branch                    Branch?                     @relation(fields: [branchId], references: [id])
+  employee                  Employee?                   @relation
   roles                     UserRole[]
   auditLogs                 AuditLog[]
-  createdSalesInvoices      SalesInvoice[]      @relation("SalesInvoiceCreatedBy")
-  updatedSalesInvoices      SalesInvoice[]      @relation("SalesInvoiceUpdatedBy")
-  createdSalesQuotations    SalesQuotation[]    @relation("SalesQuotationCreatedBy")
-  updatedSalesQuotations    SalesQuotation[]    @relation("SalesQuotationUpdatedBy")
-  createdPurchaseInvoices   PurchaseInvoice[]   @relation("PurchaseInvoiceCreatedBy")
-  updatedPurchaseInvoices   PurchaseInvoice[]   @relation("PurchaseInvoiceUpdatedBy")
-  createdPurchaseQuotations PurchaseQuotation[] @relation("PurchaseQuotationCreatedBy")
-  updatedPurchaseQuotations PurchaseQuotation[] @relation("PurchaseQuotationUpdatedBy")
-  createdParts              Part[]              @relation("PartCreatedBy")
-  updatedParts              Part[]              @relation("PartUpdatedBy")
-  createdDamages            Damage[]            @relation("DamageCreatedBy")
-  updatedDamages            Damage[]            @relation("DamageUpdatedBy")
-  createdSalesOrders        SalesOrder[]        @relation("SalesOrderCreatedBy")
-  updatedSalesOrders        SalesOrder[]        @relation("SalesOrderUpdatedBy")
-  createdSalesReturns       SalesReturn[]       @relation("SalesReturnCreatedBy")
-  updatedSalesReturns       SalesReturn[]       @relation("SalesReturnUpdatedBy")
-  createdPurchaseReturns    PurchaseReturn[]    @relation("PurchaseReturnCreatedBy")
-  updatedPurchaseReturns    PurchaseReturn[]    @relation("PurchaseReturnUpdatedBy")
-  createdGRNs               GRN[]               @relation("GRNCreatedBy")
-  updatedGRNs               GRN[]               @relation("GRNUpdatedBy")
-  createdJournalEntries     JournalEntry[]      @relation("JournalEntryCreatedBy")
-  updatedJournalEntries     JournalEntry[]      @relation("JournalEntryUpdatedBy")
-  createdPayments           Payment[]           @relation("PaymentCreatedBy")
-  updatedPayments           Payment[]           @relation("PaymentUpdatedBy")
-  createdReceipts           Receipt[]           @relation("ReceiptCreatedBy")
-  updatedReceipts           Receipt[]           @relation("ReceiptUpdatedBy")
+  createdSalesInvoices      SalesInvoice[]              @relation("SalesInvoiceCreatedBy")
+  updatedSalesInvoices      SalesInvoice[]              @relation("SalesInvoiceUpdatedBy")
+  createdSalesQuotations    SalesQuotation[]            @relation("SalesQuotationCreatedBy")
+  updatedSalesQuotations    SalesQuotation[]            @relation("SalesQuotationUpdatedBy")
+  createdPurchaseInvoices   PurchaseInvoice[]           @relation("PurchaseInvoiceCreatedBy")
+  updatedPurchaseInvoices   PurchaseInvoice[]           @relation("PurchaseInvoiceUpdatedBy")
+  createdPurchaseQuotations PurchaseQuotation[]         @relation("PurchaseQuotationCreatedBy")
+  updatedPurchaseQuotations PurchaseQuotation[]         @relation("PurchaseQuotationUpdatedBy")
+  createdParts              Part[]                      @relation("PartCreatedBy")
+  updatedParts              Part[]                      @relation("PartUpdatedBy")
+  createdDamages            Damage[]                    @relation("DamageCreatedBy")
+  updatedDamages            Damage[]                    @relation("DamageUpdatedBy")
+  createdSalesOrders        SalesOrder[]                @relation("SalesOrderCreatedBy")
+  updatedSalesOrders        SalesOrder[]                @relation("SalesOrderUpdatedBy")
+  createdSalesReturns       SalesReturn[]               @relation("SalesReturnCreatedBy")
+  updatedSalesReturns       SalesReturn[]               @relation("SalesReturnUpdatedBy")
+  createdPurchaseReturns    PurchaseReturn[]            @relation("PurchaseReturnCreatedBy")
+  updatedPurchaseReturns    PurchaseReturn[]            @relation("PurchaseReturnUpdatedBy")
+  createdGRNs               GRN[]                       @relation("GRNCreatedBy")
+  updatedGRNs               GRN[]                       @relation("GRNUpdatedBy")
+  createdJournalEntries     JournalEntry[]              @relation("JournalEntryCreatedBy")
+  updatedJournalEntries     JournalEntry[]              @relation("JournalEntryUpdatedBy")
+  createdPayments           Payment[]                   @relation("PaymentCreatedBy")
+  updatedPayments           Payment[]                   @relation("PaymentUpdatedBy")
+  createdReceipts           Receipt[]                   @relation("ReceiptCreatedBy")
+  updatedReceipts           Receipt[]                   @relation("ReceiptUpdatedBy")
+  createdBankReconciliations BankReconciliation[]       @relation("BankReconciliationCreatedBy")
+  updatedBankReconciliations BankReconciliation[]       @relation("BankReconciliationUpdatedBy")
+  createdCheques            Cheque[]                    @relation("ChequeCreatedBy")
+  updatedCheques            Cheque[]                    @relation("ChequeUpdatedBy")
+  createdChequeStatusHistory ChequeStatusHistory[]      @relation
 
   @@map("users")
 }
@@ -247,7 +376,6 @@ model RolePermission {
 // INVENTORY MANAGEMENT
 // ================================
 
-
 model Part {
   id                       String            @id @default(cuid())
   code                     String            @unique
@@ -281,6 +409,7 @@ model Part {
   updatedById              String?
 
   units                  PartUnit[]
+  stockLots              StockLot[]
   stockMovements         StockMovement[]
   openingStocks          OpeningStock[]
   damages                Damage[]
@@ -297,7 +426,7 @@ model Part {
   createdBy              User?                   @relation("PartCreatedBy", fields: [createdById], references: [id])
   updatedBy              User?                   @relation("PartUpdatedBy", fields: [updatedById], references: [id])
   CurrentStock           CurrentStock[]
-  vehicleModels          PartVehicleModel[]      // Link to compatible vehicle models
+  vehicleModels          PartVehicleModel[]
 
   @@index([partNumber])
   @@index([barCode])
@@ -314,6 +443,7 @@ model PartUnit {
   isActive       Boolean @default(true)
 
   part                 Part                  @relation(fields: [partId], references: [id])
+  stockLots            StockLot[]
   purchaseOrderItems   PurchaseOrderItem[]
   purchaseInvoiceItems PurchaseInvoiceItem[]
   salesOrderItems      SalesOrderItem[]
@@ -343,6 +473,7 @@ model Warehouse {
 
   branch         Branch          @relation(fields: [branchId], references: [id])
   bins           Bin[]
+  stockLots      StockLot[]
   stockMovements StockMovement[]
   openingStocks  OpeningStock[]
   damages        Damage[]
@@ -362,6 +493,7 @@ model Bin {
   updatedAt   DateTime @updatedAt
 
   warehouse      Warehouse       @relation(fields: [warehouseId], references: [id])
+  stockLots      StockLot[]
   stockMovements StockMovement[]
   openingStocks  OpeningStock[]
   CurrentStock   CurrentStock[]
@@ -370,6 +502,45 @@ model Bin {
   @@unique([warehouseId, code])
   @@map("bins")
 }
+
+model StockLot {
+  id                    String     @id @default(cuid())
+  lotNumber             String     @unique // Auto-generated (e.g., "LOT-2023-11-001")
+  partId                String
+  partUnitId            String
+  warehouseId           String
+  binId                 String?
+  purchaseInvoiceItemId String?    @unique // Direct link to PurchaseInvoiceItem for purchase rate
+  quantityReceived      Decimal    @db.Decimal(15, 4) // Initial quantity
+  quantityRemaining     Decimal    @db.Decimal(15, 4) // Available quantity for FIFO
+  unitCost              Decimal    @db.Decimal(15, 4) // Actual purchase price
+  purchaseDate          DateTime   @default(now()) // Date of purchase
+  referenceType         String?    // "PURCHASE_INVOICE", "GRN", "STOCK_ADJUSTMENT"
+  referenceId           String?    // Links to source document
+  status                StockLotStatus @default(ACTIVE)
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
+  
+  // Relations
+  part                  Part                  @relation(fields: [partId], references: [id])
+  partUnit              PartUnit              @relation(fields: [partUnitId], references: [id])
+  warehouse             Warehouse             @relation(fields: [warehouseId], references: [id])
+  bin                   Bin?                  @relation(fields: [binId], references: [id])
+  purchaseInvoiceItem   PurchaseInvoiceItem?  @relation(name: "StockLotToPurchaseInvoiceItem", fields: [purchaseInvoiceItemId], references: [id])
+  stockMovements        StockMovement[]
+  salesInvoiceItems     SalesInvoiceItem[]
+  salesReturnItems      SalesReturnItem[]
+  purchaseReturnItems   PurchaseReturnItem[]
+  grnItems              GRNItem[]
+  deliveryNoteItems     DeliveryNoteItem[]
+  
+  // Indexes
+  @@index([partId, status, purchaseDate])
+  @@index([lotNumber])
+  @@unique([partId, partUnitId, warehouseId, binId, lotNumber])
+  @@map("stock_lots")
+}
+
 
 model CurrentStock {
   id          String    @id @default(cuid())
@@ -394,6 +565,7 @@ model StockMovement {
   partUnitId    String // Added to specify unit of quantity
   warehouseId   String
   binId         String
+  stockLotId    String?
   movementType  StockMovementType
   referenceType String?
   referenceId   String?
@@ -408,6 +580,7 @@ model StockMovement {
   partUnit  PartUnit  @relation(fields: [partUnitId], references: [id])
   warehouse Warehouse @relation(fields: [warehouseId], references: [id])
   bin       Bin       @relation(fields: [binId], references: [id])
+  stockLot  StockLot? @relation(fields: [stockLotId], references: [id])
 
   @@map("stock_movements")
 }
@@ -493,7 +666,8 @@ model Customer {
   ledgerEntries   LedgerEntry[]
   CreditNote      CreditNote[]
   Invoice         Invoice[]
-  vehicles        CustomerVehicle[] // Link to customer's vehicles
+  vehicles        CustomerVehicle[]
+  cheques         Cheque[]         @relation("ChequeToCustomer")
 
   @@map("customers")
 }
@@ -524,7 +698,7 @@ model VehicleModel {
   updatedAt DateTime @updatedAt
 
   customerVehicles CustomerVehicle[]
-  parts            PartVehicleModel[] // Link to compatible parts
+  parts            PartVehicleModel[]
 
   @@unique([make, model, year])
   @@map("vehicle_models")
@@ -571,6 +745,7 @@ model Supplier {
   ledgerEntries      LedgerEntry[]
   DebitNote          DebitNote[]
   Invoice            Invoice[]
+  cheques            Cheque[]         @relation("ChequeToSupplier")
 
   @@map("suppliers")
 }
@@ -741,6 +916,7 @@ model SalesInvoiceItem {
   salesInvoiceId String
   partId         String
   partUnitId     String
+  stockLotId     String?
   quantity       Decimal @db.Decimal(15, 4)
   unitPrice      Decimal @db.Decimal(15, 4)
   discountAmount Decimal @default(0) @db.Decimal(15, 4) // Item-level discount
@@ -751,6 +927,7 @@ model SalesInvoiceItem {
   salesInvoice SalesInvoice @relation(fields: [salesInvoiceId], references: [id])
   part         Part         @relation(fields: [partId], references: [id])
   partUnit     PartUnit     @relation(fields: [partUnitId], references: [id])
+  stockLot     StockLot?    @relation(fields: [stockLotId], references: [id])
 
   @@map("sales_invoice_items")
 }
@@ -791,6 +968,7 @@ model SalesReturnItem {
   salesReturnId  String
   partId         String
   partUnitId     String
+  stockLotId     String?
   quantity       Decimal @db.Decimal(15, 4)
   unitPrice      Decimal @db.Decimal(15, 4)
   discountAmount Decimal @default(0) @db.Decimal(15, 4) // Item-level discount
@@ -801,6 +979,7 @@ model SalesReturnItem {
   salesReturn SalesReturn @relation(fields: [salesReturnId], references: [id])
   part        Part        @relation(fields: [partId], references: [id])
   partUnit    PartUnit    @relation(fields: [partUnitId], references: [id])
+  stockLot    StockLot?   @relation(fields: [stockLotId], references: [id])
 
   @@map("sales_return_items")
 }
@@ -945,6 +1124,7 @@ model PurchaseInvoiceItem {
   purchaseInvoiceId String
   partId            String
   partUnitId        String
+  stockLotId        String? @unique
   quantity          Decimal @db.Decimal(15, 4)
   unitPrice         Decimal @db.Decimal(15, 4)
   discountAmount    Decimal @default(0) @db.Decimal(15, 4) // Item-level discount
@@ -955,9 +1135,11 @@ model PurchaseInvoiceItem {
   purchaseInvoice PurchaseInvoice @relation(fields: [purchaseInvoiceId], references: [id])
   part            Part            @relation(fields: [partId], references: [id])
   partUnit        PartUnit        @relation(fields: [partUnitId], references: [id])
+  stockLot        StockLot?       @relation(name: "StockLotToPurchaseInvoiceItem")
 
   @@map("purchase_invoice_items")
 }
+
 
 model PurchaseReturn {
   id                String       @id @default(cuid())
@@ -995,6 +1177,7 @@ model PurchaseReturnItem {
   purchaseReturnId String
   partId           String
   partUnitId       String
+  stockLotId       String?
   quantity         Decimal @db.Decimal(15, 4)
   unitPrice        Decimal @db.Decimal(15, 4)
   discountAmount   Decimal @default(0) @db.Decimal(15, 4) // Item-level discount
@@ -1005,6 +1188,7 @@ model PurchaseReturnItem {
   purchaseReturn PurchaseReturn @relation(fields: [purchaseReturnId], references: [id])
   part           Part           @relation(fields: [partId], references: [id])
   partUnit       PartUnit       @relation(fields: [partUnitId], references: [id])
+  stockLot       StockLot?      @relation(fields: [stockLotId], references: [id])
 
   @@map("purchase_return_items")
 }
@@ -1040,6 +1224,7 @@ model GRNItem {
   grnId       String
   partId      String
   partUnitId  String // Added to specify unit of quantities
+  stockLotId  String?
   orderedQty  Decimal @db.Decimal(15, 4)
   receivedQty Decimal @db.Decimal(15, 4)
   acceptedQty Decimal @db.Decimal(15, 4)
@@ -1051,6 +1236,7 @@ model GRNItem {
   grn      GRN      @relation(fields: [grnId], references: [id])
   part     Part     @relation(fields: [partId], references: [id])
   partUnit PartUnit @relation(fields: [partUnitId], references: [id])
+  stockLot StockLot? @relation(fields: [stockLotId], references: [id])
 
   @@map("grn_items")
 }
@@ -1080,6 +1266,7 @@ model DeliveryNoteItem {
   deliveryNoteId String
   partId         String
   partUnitId     String // Added to specify unit of quantities
+  stockLotId     String?
   orderedQty     Decimal @db.Decimal(15, 4)
   deliveredQty   Decimal @db.Decimal(15, 4)
   remarks        String?
@@ -1087,6 +1274,7 @@ model DeliveryNoteItem {
   deliveryNote DeliveryNote @relation(fields: [deliveryNoteId], references: [id])
   part         Part         @relation(fields: [partId], references: [id])
   partUnit     PartUnit     @relation(fields: [partUnitId], references: [id])
+  stockLot     StockLot?    @relation(fields: [stockLotId], references: [id])
 
   @@map("delivery_note_items")
 }
@@ -1215,23 +1403,29 @@ model Contra {
 }
 
 model Payment {
-  id          String      @id @default(cuid())
-  number      String      @unique
-  supplierId  String?
-  date        DateTime    @default(now())
-  paymentMode PaymentMode
-  ledgerId    String
-  amount      Decimal     @db.Decimal(15, 4)
-  referenceNo String?
-  description String?
-  isPosted    Boolean     @default(false)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  createdById String?
-  updatedById String?
+  id            String      @id @default(cuid())
+  number        String      @unique
+  supplierId    String?
+  date          DateTime    @default(now())
+  paymentMode   PaymentMode
+  ledgerId      String
+  bankAccountId String?     // Link to BankAccount
+  chequeId      String?     @unique // Link to Cheque for cheque payments
+  amount        Decimal     @db.Decimal(15, 4)
+  referenceNo   String?
+  description   String?
+  isPosted      Boolean     @default(false)
+  isReconciled  Boolean     @default(false)
+  reconciledDate DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  createdById   String?
+  updatedById   String?
 
   supplier          Supplier?        @relation(fields: [supplierId], references: [id])
   ledger            Ledger           @relation(fields: [ledgerId], references: [id])
+  bankAccount       BankAccount?     @relation(fields: [bankAccountId], references: [id])
+  cheque            Cheque?          @relation(name: "ChequeToPayment", fields: [chequeId], references: [id])
   lines             PaymentLine[]
   purchaseInvoice   PurchaseInvoice? @relation(fields: [purchaseInvoiceId], references: [id])
   purchaseInvoiceId String?
@@ -1255,23 +1449,29 @@ model PaymentLine {
 }
 
 model Receipt {
-  id          String      @id @default(cuid())
-  number      String      @unique
-  customerId  String?
-  date        DateTime    @default(now())
-  paymentMode PaymentMode
-  ledgerId    String
-  amount      Decimal     @db.Decimal(15, 4)
-  referenceNo String?
-  description String?
-  isPosted    Boolean     @default(false)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  createdById String?
-  updatedById String?
+  id            String      @id @default(cuid())
+  number        String      @unique
+  customerId    String?
+  date          DateTime    @default(now())
+  paymentMode   PaymentMode
+  ledgerId      String
+  bankAccountId String?     // Link to BankAccount
+  chequeId      String?     @unique // Link to Cheque for cheque receipts
+  amount        Decimal     @db.Decimal(15, 4)
+  referenceNo   String?
+  description   String?
+  isPosted      Boolean     @default(false)
+  isReconciled  Boolean     @default(false)
+  reconciledDate DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  createdById   String?
+  updatedById   String?
 
   customer       Customer?     @relation(fields: [customerId], references: [id])
   ledger         Ledger        @relation(fields: [ledgerId], references: [id])
+  bankAccount    BankAccount?  @relation(fields: [bankAccountId], references: [id])
+  cheque         Cheque?       @relation(name: "ChequeToReceipt", fields: [chequeId], references: [id])
   lines          ReceiptLine[]
   salesInvoice   SalesInvoice? @relation(fields: [salesInvoiceId], references: [id])
   salesInvoiceId String?
@@ -1422,6 +1622,13 @@ model PrintTemplate {
 // ENUMS
 // ================================
 
+enum StockLotStatus {
+  ACTIVE
+  SOLD
+  DAMAGED
+  RETURNED
+}
+
 enum StockMovementType {
   IN
   OUT
@@ -1541,6 +1748,8 @@ enum TemplateType {
   LEDGER_STATEMENT
   CUSTOMER_STATEMENT
   SUPPLIER_STATEMENT
+  BANK_RECONCILIATION
+  CHEQUE_PAYMENT 
 }
 
 enum PaperSize {
@@ -1563,4 +1772,25 @@ enum Orientation {
 enum WarrantyPeriodType {
   MONTHS
   YEARS
+}
+
+enum ReconciliationStatus {
+  DRAFT
+  IN_PROGRESS
+  COMPLETED
+  DISCREPANCY
+}
+
+enum ChequeType {
+  OUTWARD    // Cheque issued by the company (e.g., to suppliers)
+  INWARD    // Cheque received from others (e.g., from customers)
+}
+
+enum ChequeStatus {
+  ISSUED        // Cheque issued or received
+  PRESENTED     // Cheque presented to the bank
+  CLEARED       // Cheque cleared by the bank
+  BOUNCED       // Cheque returned unpaid
+  CANCELLED     // Cheque cancelled before presentation
+  POST_DATED    // Cheque with a future date
 }
