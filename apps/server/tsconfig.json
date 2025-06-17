@@ -27,8 +27,7 @@
   },
   "include": [
     "src/**/*",
-    "prisma/seed.ts"
-  ],
+    "prisma/seed.ts"],
   "exclude": ["node_modules", "dist"],
   "references": [
     { "path": "../../packages/shared" }

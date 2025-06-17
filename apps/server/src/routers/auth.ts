@@ -1,3 +1,4 @@
+// server/src/routers/auth.ts
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { router, publicProcedure, protectedProcedure } from '../trpc';

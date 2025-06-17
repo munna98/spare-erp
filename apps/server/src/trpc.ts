@@ -1,3 +1,4 @@
+// server/src/trpc.ts
 import { initTRPC, TRPCError } from "@trpc/server";
 import { Context } from "./context";
 import { ZodError } from "zod";

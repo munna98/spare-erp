@@ -1,4 +1,4 @@
-// store/auth.ts
+// apps/desktop/src/store/auth.ts
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { User } from '@shared/types';
@@ -7,6 +7,7 @@ interface AuthState {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
+  isInitialized: boolean; // Add this to track initialization
   
   // Actions
   login: (data: { token: string; user: User }) => void;
@@ -15,6 +16,7 @@ interface AuthState {
   setUser: (user: User) => void;
   updateUser: (userData: Partial<User>) => void;
   clearAuth: () => void;
+  initialize: () => void; // Add this for proper initialization
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -23,31 +25,38 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       token: null,
       isAuthenticated: false,
+      isInitialized: false,
 
       login: (data) => {
-        localStorage.setItem('auth-token', data.token);
+        // Let Zustand persist handle localStorage
         set({
           user: data.user,
           token: data.token,
           isAuthenticated: true,
+          isInitialized: true,
         });
       },
 
       logout: () => {
-        localStorage.removeItem('auth-token');
         set({
           user: null,
           token: null,
           isAuthenticated: false,
+          isInitialized: true,
         });
       },
 
       setToken: (token) => {
-        localStorage.setItem('auth-token', token);
         set({ token });
       },
 
-      setUser: (user) => set({ user }),
+      setUser: (user) => {
+        set({ 
+          user, 
+          isAuthenticated: true,
+          isInitialized: true 
+        });
+      },
 
       updateUser: (userData) => {
         const currentUser = get().user;
@@ -63,12 +72,16 @@ export const useAuthStore = create<AuthState>()(
       },
 
       clearAuth: () => {
-        localStorage.removeItem('auth-token');
         set({
           user: null,
           token: null,
           isAuthenticated: false,
+          isInitialized: true,
         });
+      },
+
+      initialize: () => {
+        set({ isInitialized: true });
       },
     }),
     {
@@ -78,6 +91,12 @@ export const useAuthStore = create<AuthState>()(
         user: state.user,
         isAuthenticated: state.isAuthenticated,
       }),
+      // Add onRehydrateStorage to handle initialization
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state.isInitialized = true;
+        }
+      },
     }
   )
 );

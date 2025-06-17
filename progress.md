@@ -1,68 +1,23 @@
 
 
-
-D:\uae-spare-parts-erp>node print-structure.js
-📁 apps
-  📁 desktop
-    📁 electron
-      📄 main.ts
-      📄 preload.ts
-      📄 tsconfig.json
-    📄 package.json
-    📄 postcss.config.js
-    📁 src
-      📄 App.tsx
-      📄 index.css
-      📄 index.html
-      📁 lib
-        📄 trpc.ts
-      📄 main.tsx
-      📁 src
-      📁 store
-        📄 auth.ts
-    📄 tailwind.config.js
-    📄 tsconfig.json
-    📄 vite.config.ts
-  📁 server
-    📄 .env
-    📄 .gitignore
-    📄 package-lock.json
-    📄 package.json
-    📁 prisma
-      📁 migrations
-        📁 20250613124313_init
-          📄 migration.sql
-        📁 20250613124544_make_warehouse_code_unique
-          📄 migration.sql
-        📄 migration_lock.toml
-      📄 schema.prisma
-      📄 seed.js
-    📁 src
-      📄 context.ts
-      📄 index.ts
-      📁 routers
-        📄 auth.ts
-        📄 index.ts
-        📄 inventory.ts
-        📄 parts.ts
-      📄 trpc.ts
-      📁 utils
-        📄 auth.ts
-        📄 jwt.ts
-    📄 tsconfig.json
-📄 package.json
-
+Microsoft Windows [Version 10.0.19043.1348]
+(c) Microsoft Corporation. All rights reserved.
 
 D:\uae-spare-parts-erp>node print-structure.js
 📄 .gitignore
 📁 apps
   📁 desktop
+    📄 dev-electron.cjs
+    📁 dist-electron
+      📄 main.d.ts
+      📄 main.js
+      📄 preload.d.ts
+      📄 preload.js
+      📄 tsconfig.tsbuildinfo
     📁 electron
-      📄 main.ts
-      📄 preload.ts
-      📄 tsconfig.json
-    📄 npm
-    📄 package-claude-old.json
+      📄 main.cjs
+      📄 preload.cjs
+    📄 index.html
     📄 package-lock.json
     📄 package.json
     📄 postcss.config.mjs
@@ -70,7 +25,9 @@ D:\uae-spare-parts-erp>node print-structure.js
       📄 App.tsx
       📁 components
         📁 auth
+          📄 ChangePassword.tsx
           📄 LoginForm.tsx
+          📄 Profile.tsx
         📁 layout
           📄 Header.tsx
           📄 Layout.tsx
@@ -80,11 +37,10 @@ D:\uae-spare-parts-erp>node print-structure.js
           📄 badge.tsx
           📄 button.tsx
           📄 card.tsx
-          📄 dropdown.tsx
+          📄 dropdown-menu.tsx
           📄 form.tsx
           📄 input.tsx
       📄 index.css
-      📄 index.html
       📁 lib
         📄 trpc.ts
         📄 utils.ts
@@ -93,9 +49,11 @@ D:\uae-spare-parts-erp>node print-structure.js
         📄 Dashboard.tsx
       📁 store
         📄 auth.ts
-    📄 tailwind.config.js
+      📁 types
+        📄 auth.ts
+        📄 electron.d.ts
+    📄 tailwind.config.ts
     📄 tsconfig.json
-    📄 tsconfig.tsbuildinfo
     📄 vite.config.ts
   📁 server
     📄 .env
@@ -108,6 +66,8 @@ D:\uae-spare-parts-erp>node print-structure.js
           📄 migration.sql
         📁 20250613124544_make_warehouse_code_unique
           📄 migration.sql
+        📁 20250616141712_stock_lot
+          📄 migration.sql
         📄 migration_lock.toml
       📄 schema.prisma
       📄 seed.js
@@ -117,22 +77,26 @@ D:\uae-spare-parts-erp>node print-structure.js
       📁 routers
         📄 auth.ts
         📄 index.ts
-        📄 inventory.ts
-        📄 parts.ts
       📄 trpc.ts
       📁 utils
         📄 auth.ts
         📄 jwt.ts
-
+        📄 password.ts
+        📄 prisma.ts
     📄 tsconfig.json
+📄 package-lock.json
 📄 package.json
 📁 packages
   📁 shared
+    📁 src
+      📄 index.ts
+      📄 types.ts
     📄 tsconfig.json
+
 📄 tsconfig.base.json
 📄 tsconfig.build.json
 
-
+D:\uae-spare-parts-erp>
 
 
 UAE Spare Parts ERP - Updated Development Progress

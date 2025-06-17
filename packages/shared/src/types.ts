@@ -1,4 +1,6 @@
 // packages/shared/src/types.ts 
+
+// Your existing types (keeping them as-is)
 export interface User {
   id: string;
   name: string;
@@ -100,4 +102,95 @@ export interface AuthResponse {
   token: string;
   user: User;
   message: string;
+}
+
+// Additional Auth-related types (extending your existing ones)
+
+// Auth Request Types
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface UpdateProfileRequest {
+  name?: string;
+  phone?: string;
+}
+
+// Auth State Management Types
+export interface AuthState {
+  user: User | null;
+  token: string | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+}
+
+// JWT Payload Type
+export interface JwtPayload {
+  userId: string;
+  companyId: string;
+  branchId?: string;
+  iat?: number;
+  exp?: number;
+}
+
+// Permission Check Types
+export interface PermissionCheck {
+  resource: string;
+  action: string;
+}
+
+// Utility Types
+export type UserWithoutPassword = User;
+export type UserPermissions = Array<{
+  resource: string;
+  action: string;
+}>;
+
+// Common Response Types
+export interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  message?: string;
+  error?: string;
+}
+
+// Auth Error Types
+export enum AuthErrorCode {
+  INVALID_CREDENTIALS = 'INVALID_CREDENTIALS',
+  ACCOUNT_DEACTIVATED = 'ACCOUNT_DEACTIVATED',
+  COMPANY_DEACTIVATED = 'COMPANY_DEACTIVATED',
+  TOKEN_EXPIRED = 'TOKEN_EXPIRED',
+  INVALID_TOKEN = 'INVALID_TOKEN',
+  PERMISSION_DENIED = 'PERMISSION_DENIED',
+  WEAK_PASSWORD = 'WEAK_PASSWORD',
+}
+
+export interface AuthError {
+  code: AuthErrorCode;
+  message: string;
+  field?: string;
+}
+
+// Helper type to extract user permissions in a flat format
+export type FlatUserPermissions = Array<{
+  id: string;
+  name: string;
+  resource: string;
+  action: string;
+}>;
+
+// Auth Context Types for React
+export interface AuthContextType extends AuthState {
+  login: (credentials: LoginRequest) => Promise<void>;
+  logout: () => void;
+  updateProfile: (data: UpdateProfileRequest) => Promise<void>;
+  changePassword: (data: ChangePasswordRequest) => Promise<void>;
+  hasPermission: (resource: string, action: string) => boolean;
+  getUserPermissions: () => FlatUserPermissions;
 }
