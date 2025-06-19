@@ -10,9 +10,12 @@
     "build": "npm run build --workspace=apps/server && npm run build --workspace=apps/desktop",
     "clean": "rimraf apps/*/dist apps/*/dist-electron",
     "format": "prettier --write .",
-    "postinstall": "npm install --workspaces",
     "studio": "npm run db:studio --workspace=apps/server"
   },
+  "overrides": {
+  "@types/react": "18.2.45",
+  "@types/react-dom": "18.2.19"
+},
   "workspaces": [
     "apps/desktop",
     "apps/server",

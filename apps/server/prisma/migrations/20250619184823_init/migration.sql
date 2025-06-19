@@ -1,4 +1,16 @@
 -- CreateEnum
+CREATE TYPE "RoleType" AS ENUM ('ADMIN', 'MANAGER', 'SALES', 'INVENTORY_MANAGER', 'FINANCE', 'EMPLOYEE', 'AUDITOR');
+
+-- CreateEnum
+CREATE TYPE "PermissionAction" AS ENUM ('CREATE', 'READ', 'UPDATE', 'DELETE', 'APPROVE', 'POST', 'RECONCILE', 'EXPORT', 'CONFIGURE');
+
+-- CreateEnum
+CREATE TYPE "ModuleType" AS ENUM ('SALES', 'PURCHASES', 'INVENTORY', 'FINANCIALS', 'SETTINGS', 'AUDIT');
+
+-- CreateEnum
+CREATE TYPE "StockLotStatus" AS ENUM ('ACTIVE', 'SOLD', 'DAMAGED', 'RETURNED');
+
+-- CreateEnum
 CREATE TYPE "StockMovementType" AS ENUM ('IN', 'OUT', 'TRANSFER', 'ADJUSTMENT');
 
 -- CreateEnum
@@ -35,7 +47,7 @@ CREATE TYPE "VoucherType" AS ENUM ('SALES_INVOICE', 'SALES_RETURN', 'PURCHASE_IN
 CREATE TYPE "TemplateEngine" AS ENUM ('EJS', 'JSX', 'PDFKIT');
 
 -- CreateEnum
-CREATE TYPE "TemplateType" AS ENUM ('SALES_QUOTATION', 'SALES_ORDER', 'SALES_INVOICE', 'SALES_RETURN', 'DELIVERY_NOTE', 'PURCHASE_QUOTATION', 'PURCHASE_ORDER', 'PURCHASE_INVOICE', 'PURCHASE_RETURN', 'GRN', 'PAYMENT_VOUCHER', 'RECEIPT_VOUCHER', 'JOURNAL_VOUCHER', 'CONTRA_VOUCHER', 'DEBIT_NOTE', 'CREDIT_NOTE', 'LEDGER_STATEMENT', 'CUSTOMER_STATEMENT', 'SUPPLIER_STATEMENT');
+CREATE TYPE "TemplateType" AS ENUM ('SALES_QUOTATION', 'SALES_ORDER', 'SALES_INVOICE', 'SALES_RETURN', 'DELIVERY_NOTE', 'PURCHASE_QUOTATION', 'PURCHASE_ORDER', 'PURCHASE_INVOICE', 'PURCHASE_RETURN', 'GRN', 'PAYMENT_VOUCHER', 'RECEIPT_VOUCHER', 'JOURNAL_VOUCHER', 'CONTRA_VOUCHER', 'DEBIT_NOTE', 'CREDIT_NOTE', 'LEDGER_STATEMENT', 'CUSTOMER_STATEMENT', 'SUPPLIER_STATEMENT', 'BANK_RECONCILIATION', 'CHEQUE_PAYMENT');
 
 -- CreateEnum
 CREATE TYPE "PaperSize" AS ENUM ('A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'LETTER', 'LEGAL', 'TABLOID');
@@ -45,6 +57,18 @@ CREATE TYPE "Orientation" AS ENUM ('PORTRAIT', 'LANDSCAPE');
 
 -- CreateEnum
 CREATE TYPE "WarrantyPeriodType" AS ENUM ('MONTHS', 'YEARS');
+
+-- CreateEnum
+CREATE TYPE "ReconciliationStatus" AS ENUM ('DRAFT', 'IN_PROGRESS', 'COMPLETED', 'DISCREPANCY');
+
+-- CreateEnum
+CREATE TYPE "ChequeType" AS ENUM ('OUTWARD', 'INWARD');
+
+-- CreateEnum
+CREATE TYPE "ChequeStatus" AS ENUM ('ISSUED', 'PRESENTED', 'CLEARED', 'BOUNCED', 'CANCELLED', 'POST_DATED');
+
+-- CreateEnum
+CREATE TYPE "UnitCategory" AS ENUM ('COUNT', 'WEIGHT', 'VOLUME', 'LENGTH', 'AREA', 'OTHER');
 
 -- CreateTable
 CREATE TABLE "companies" (
@@ -139,6 +163,100 @@ CREATE TABLE "voucher_sequences" (
 );
 
 -- CreateTable
+CREATE TABLE "bank_accounts" (
+    "id" TEXT NOT NULL,
+    "companyId" TEXT NOT NULL,
+    "bankName" TEXT NOT NULL,
+    "accountNumber" TEXT NOT NULL,
+    "iban" TEXT,
+    "branchName" TEXT,
+    "swiftCode" TEXT,
+    "ledgerId" TEXT,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "bank_accounts_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "bank_reconciliations" (
+    "id" TEXT NOT NULL,
+    "bankAccountId" TEXT NOT NULL,
+    "statementDate" TIMESTAMP(3) NOT NULL,
+    "startDate" TIMESTAMP(3) NOT NULL,
+    "endDate" TIMESTAMP(3) NOT NULL,
+    "openingBalance" DECIMAL(15,4) NOT NULL,
+    "closingBalance" DECIMAL(15,4) NOT NULL,
+    "reconciledBalance" DECIMAL(15,4) NOT NULL DEFAULT 0,
+    "status" "ReconciliationStatus" NOT NULL DEFAULT 'DRAFT',
+    "remarks" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "createdById" TEXT,
+    "updatedById" TEXT,
+
+    CONSTRAINT "bank_reconciliations_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "reconciliation_transactions" (
+    "id" TEXT NOT NULL,
+    "bankReconciliationId" TEXT NOT NULL,
+    "transactionType" TEXT NOT NULL,
+    "referenceId" TEXT,
+    "transactionDate" TIMESTAMP(3) NOT NULL,
+    "description" TEXT,
+    "amount" DECIMAL(15,4) NOT NULL,
+    "isReconciled" BOOLEAN NOT NULL DEFAULT false,
+    "reconciledDate" TIMESTAMP(3),
+    "bankStatementRef" TEXT,
+    "chequeNumber" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "reconciliation_transactions_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "cheques" (
+    "id" TEXT NOT NULL,
+    "bankAccountId" TEXT NOT NULL,
+    "chequeNumber" TEXT NOT NULL,
+    "chequeType" "ChequeType" NOT NULL,
+    "payee" TEXT,
+    "payer" TEXT,
+    "supplierId" TEXT,
+    "customerId" TEXT,
+    "amount" DECIMAL(15,4) NOT NULL,
+    "issueDate" TIMESTAMP(3) NOT NULL,
+    "chequeDate" TIMESTAMP(3) NOT NULL,
+    "status" "ChequeStatus" NOT NULL DEFAULT 'ISSUED',
+    "referenceNo" TEXT,
+    "remarks" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "createdById" TEXT,
+    "updatedById" TEXT,
+    "paymentId" TEXT,
+    "receiptId" TEXT,
+
+    CONSTRAINT "cheques_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "cheque_status_history" (
+    "id" TEXT NOT NULL,
+    "chequeId" TEXT NOT NULL,
+    "status" "ChequeStatus" NOT NULL,
+    "changeDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "remarks" TEXT,
+    "createdById" TEXT,
+
+    CONSTRAINT "cheque_status_history_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "users" (
     "id" TEXT NOT NULL,
     "companyId" TEXT NOT NULL,
@@ -157,8 +275,10 @@ CREATE TABLE "users" (
 -- CreateTable
 CREATE TABLE "roles" (
     "id" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
+    "type" "RoleType",
+    "name" TEXT,
     "description" TEXT,
+    "scope" TEXT,
 
     CONSTRAINT "roles_pkey" PRIMARY KEY ("id")
 );
@@ -177,7 +297,8 @@ CREATE TABLE "permissions" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "resource" TEXT NOT NULL,
-    "action" TEXT NOT NULL,
+    "action" "PermissionAction" NOT NULL,
+    "module" "ModuleType",
 
     CONSTRAINT "permissions_pkey" PRIMARY KEY ("id")
 );
@@ -198,10 +319,8 @@ CREATE TABLE "parts" (
     "partNumber" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "description" TEXT,
-    "category" TEXT,
-    "brand" TEXT,
-    "model" TEXT,
-    "year" TEXT,
+    "categoryId" TEXT,
+    "brandId" TEXT,
     "barCode" TEXT,
     "hsnCode" TEXT,
     "vatRate" DECIMAL(5,2) NOT NULL DEFAULT 5.0,
@@ -211,11 +330,14 @@ CREATE TABLE "parts" (
     "maxStockLevel" DECIMAL(15,4),
     "minStockLevel" DECIMAL(15,4),
     "averageCost" DECIMAL(15,4),
+    "defaultPurchaseUnitId" TEXT,
+    "defaultSalesUnitId" TEXT,
+    "baseUnitId" TEXT,
     "purchaseRate" DECIMAL(15,3),
     "marginPercentage" DECIMAL(15,3),
     "sellingRate" DECIMAL(15,3),
     "minSellingRate" DECIMAL(15,3),
-    "minSellingRatePercentage" DECIMAL(15,3),
+    "minMarginPercentage" DECIMAL(15,3),
     "wholesaleRate" DECIMAL(15,3),
     "warrantyPeriod" INTEGER,
     "warrantyPeriodType" "WarrantyPeriodType",
@@ -228,14 +350,57 @@ CREATE TABLE "parts" (
 );
 
 -- CreateTable
+CREATE TABLE "Brand" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Brand_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Category" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Category_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "units" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "symbol" TEXT NOT NULL,
+    "description" TEXT,
+    "category" "UnitCategory",
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "units_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "part_units" (
     "id" TEXT NOT NULL,
     "partId" TEXT NOT NULL,
-    "unitName" TEXT NOT NULL,
-    "symbol" TEXT,
+    "unitId" TEXT NOT NULL,
     "conversionRate" DECIMAL(15,4) NOT NULL,
     "isBaseUnit" BOOLEAN NOT NULL DEFAULT false,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "purchaseRate" DECIMAL(15,3),
+    "sellingRate" DECIMAL(15,3),
+    "minSellingRate" DECIMAL(15,3),
+    "wholesaleRate" DECIMAL(15,3),
+    "marginPercentage" DECIMAL(15,3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "part_units_pkey" PRIMARY KEY ("id")
 );
@@ -269,6 +434,28 @@ CREATE TABLE "bins" (
 );
 
 -- CreateTable
+CREATE TABLE "stock_lots" (
+    "id" TEXT NOT NULL,
+    "lotNumber" TEXT NOT NULL,
+    "partId" TEXT NOT NULL,
+    "partUnitId" TEXT NOT NULL,
+    "warehouseId" TEXT NOT NULL,
+    "binId" TEXT,
+    "purchaseInvoiceItemId" TEXT,
+    "quantityReceived" DECIMAL(15,4) NOT NULL,
+    "quantityRemaining" DECIMAL(15,4) NOT NULL,
+    "unitCost" DECIMAL(15,4) NOT NULL,
+    "purchaseDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "referenceType" TEXT,
+    "referenceId" TEXT,
+    "status" "StockLotStatus" NOT NULL DEFAULT 'ACTIVE',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "stock_lots_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "current_stocks" (
     "id" TEXT NOT NULL,
     "partId" TEXT NOT NULL,
@@ -288,6 +475,7 @@ CREATE TABLE "stock_movements" (
     "partUnitId" TEXT NOT NULL,
     "warehouseId" TEXT NOT NULL,
     "binId" TEXT NOT NULL,
+    "stockLotId" TEXT,
     "movementType" "StockMovementType" NOT NULL,
     "referenceType" TEXT,
     "referenceId" TEXT,
@@ -385,6 +573,8 @@ CREATE TABLE "vehicle_models" (
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "createdById" TEXT,
+    "updatedById" TEXT,
 
     CONSTRAINT "vehicle_models_pkey" PRIMARY KEY ("id")
 );
@@ -554,6 +744,7 @@ CREATE TABLE "sales_invoice_items" (
     "salesInvoiceId" TEXT NOT NULL,
     "partId" TEXT NOT NULL,
     "partUnitId" TEXT NOT NULL,
+    "stockLotId" TEXT,
     "quantity" DECIMAL(15,4) NOT NULL,
     "unitPrice" DECIMAL(15,4) NOT NULL,
     "discountAmount" DECIMAL(15,4) NOT NULL DEFAULT 0,
@@ -593,6 +784,7 @@ CREATE TABLE "sales_return_items" (
     "salesReturnId" TEXT NOT NULL,
     "partId" TEXT NOT NULL,
     "partUnitId" TEXT NOT NULL,
+    "stockLotId" TEXT,
     "quantity" DECIMAL(15,4) NOT NULL,
     "unitPrice" DECIMAL(15,4) NOT NULL,
     "discountAmount" DECIMAL(15,4) NOT NULL DEFAULT 0,
@@ -712,6 +904,7 @@ CREATE TABLE "purchase_invoice_items" (
     "purchaseInvoiceId" TEXT NOT NULL,
     "partId" TEXT NOT NULL,
     "partUnitId" TEXT NOT NULL,
+    "stockLotId" TEXT,
     "quantity" DECIMAL(15,4) NOT NULL,
     "unitPrice" DECIMAL(15,4) NOT NULL,
     "discountAmount" DECIMAL(15,4) NOT NULL DEFAULT 0,
@@ -751,6 +944,7 @@ CREATE TABLE "purchase_return_items" (
     "purchaseReturnId" TEXT NOT NULL,
     "partId" TEXT NOT NULL,
     "partUnitId" TEXT NOT NULL,
+    "stockLotId" TEXT,
     "quantity" DECIMAL(15,4) NOT NULL,
     "unitPrice" DECIMAL(15,4) NOT NULL,
     "discountAmount" DECIMAL(15,4) NOT NULL DEFAULT 0,
@@ -784,6 +978,7 @@ CREATE TABLE "grn_items" (
     "grnId" TEXT NOT NULL,
     "partId" TEXT NOT NULL,
     "partUnitId" TEXT NOT NULL,
+    "stockLotId" TEXT,
     "orderedQty" DECIMAL(15,4) NOT NULL,
     "receivedQty" DECIMAL(15,4) NOT NULL,
     "acceptedQty" DECIMAL(15,4) NOT NULL,
@@ -818,6 +1013,7 @@ CREATE TABLE "delivery_note_items" (
     "deliveryNoteId" TEXT NOT NULL,
     "partId" TEXT NOT NULL,
     "partUnitId" TEXT NOT NULL,
+    "stockLotId" TEXT,
     "orderedQty" DECIMAL(15,4) NOT NULL,
     "deliveredQty" DECIMAL(15,4) NOT NULL,
     "remarks" TEXT,
@@ -927,10 +1123,14 @@ CREATE TABLE "payments" (
     "date" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "paymentMode" "PaymentMode" NOT NULL,
     "ledgerId" TEXT NOT NULL,
+    "bankAccountId" TEXT,
+    "chequeId" TEXT,
     "amount" DECIMAL(15,4) NOT NULL,
     "referenceNo" TEXT,
     "description" TEXT,
     "isPosted" BOOLEAN NOT NULL DEFAULT false,
+    "isReconciled" BOOLEAN NOT NULL DEFAULT false,
+    "reconciledDate" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "createdById" TEXT,
@@ -959,10 +1159,14 @@ CREATE TABLE "receipts" (
     "date" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "paymentMode" "PaymentMode" NOT NULL,
     "ledgerId" TEXT NOT NULL,
+    "bankAccountId" TEXT,
+    "chequeId" TEXT,
     "amount" DECIMAL(15,4) NOT NULL,
     "referenceNo" TEXT,
     "description" TEXT,
     "isPosted" BOOLEAN NOT NULL DEFAULT false,
+    "isReconciled" BOOLEAN NOT NULL DEFAULT false,
+    "reconciledDate" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "createdById" TEXT,
@@ -1098,7 +1302,25 @@ CREATE UNIQUE INDEX "code_sequences_entityType_branchId_key" ON "code_sequences"
 CREATE UNIQUE INDEX "voucher_sequences_voucherType_branchId_financialYearId_key" ON "voucher_sequences"("voucherType", "branchId", "financialYearId");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "bank_accounts_accountNumber_key" ON "bank_accounts"("accountNumber");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "bank_accounts_iban_key" ON "bank_accounts"("iban");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "cheques_paymentId_key" ON "cheques"("paymentId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "cheques_receiptId_key" ON "cheques"("receiptId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "cheques_bankAccountId_chequeNumber_key" ON "cheques"("bankAccountId", "chequeNumber");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "roles_type_key" ON "roles"("type");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "roles_name_key" ON "roles"("name");
@@ -1128,10 +1350,46 @@ CREATE INDEX "parts_partNumber_idx" ON "parts"("partNumber");
 CREATE INDEX "parts_barCode_idx" ON "parts"("barCode");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "part_units_partId_unitName_symbol_key" ON "part_units"("partId", "unitName", "symbol");
+CREATE UNIQUE INDEX "Brand_name_key" ON "Brand"("name");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Category_name_key" ON "Category"("name");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "units_name_key" ON "units"("name");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "units_symbol_key" ON "units"("symbol");
+
+-- CreateIndex
+CREATE INDEX "part_units_partId_idx" ON "part_units"("partId");
+
+-- CreateIndex
+CREATE INDEX "part_units_unitId_idx" ON "part_units"("unitId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "part_units_partId_unitId_key" ON "part_units"("partId", "unitId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "warehouses_code_key" ON "warehouses"("code");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "bins_warehouseId_code_key" ON "bins"("warehouseId", "code");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "stock_lots_lotNumber_key" ON "stock_lots"("lotNumber");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "stock_lots_purchaseInvoiceItemId_key" ON "stock_lots"("purchaseInvoiceItemId");
+
+-- CreateIndex
+CREATE INDEX "stock_lots_partId_status_purchaseDate_idx" ON "stock_lots"("partId", "status", "purchaseDate");
+
+-- CreateIndex
+CREATE INDEX "stock_lots_lotNumber_idx" ON "stock_lots"("lotNumber");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "stock_lots_partId_partUnitId_warehouseId_binId_lotNumber_key" ON "stock_lots"("partId", "partUnitId", "warehouseId", "binId", "lotNumber");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "current_stocks_partId_partUnitId_warehouseId_binId_key" ON "current_stocks"("partId", "partUnitId", "warehouseId", "binId");
@@ -1188,6 +1446,9 @@ CREATE UNIQUE INDEX "purchase_invoices_number_key" ON "purchase_invoices"("numbe
 CREATE UNIQUE INDEX "purchase_invoices_invoiceId_key" ON "purchase_invoices"("invoiceId");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "purchase_invoice_items_stockLotId_key" ON "purchase_invoice_items"("stockLotId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "purchase_returns_number_key" ON "purchase_returns"("number");
 
 -- CreateIndex
@@ -1212,7 +1473,13 @@ CREATE UNIQUE INDEX "contra_vouchers_number_key" ON "contra_vouchers"("number");
 CREATE UNIQUE INDEX "payments_number_key" ON "payments"("number");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "payments_chequeId_key" ON "payments"("chequeId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "receipts_number_key" ON "receipts"("number");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "receipts_chequeId_key" ON "receipts"("chequeId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "debit_notes_number_key" ON "debit_notes"("number");
@@ -1254,6 +1521,42 @@ ALTER TABLE "voucher_sequences" ADD CONSTRAINT "voucher_sequences_branchId_fkey"
 ALTER TABLE "voucher_sequences" ADD CONSTRAINT "voucher_sequences_financialYearId_fkey" FOREIGN KEY ("financialYearId") REFERENCES "financial_years"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "bank_accounts" ADD CONSTRAINT "bank_accounts_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "bank_reconciliations" ADD CONSTRAINT "bank_reconciliations_bankAccountId_fkey" FOREIGN KEY ("bankAccountId") REFERENCES "bank_accounts"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "bank_reconciliations" ADD CONSTRAINT "bank_reconciliations_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "bank_reconciliations" ADD CONSTRAINT "bank_reconciliations_updatedById_fkey" FOREIGN KEY ("updatedById") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "reconciliation_transactions" ADD CONSTRAINT "reconciliation_transactions_bankReconciliationId_fkey" FOREIGN KEY ("bankReconciliationId") REFERENCES "bank_reconciliations"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "cheques" ADD CONSTRAINT "cheques_bankAccountId_fkey" FOREIGN KEY ("bankAccountId") REFERENCES "bank_accounts"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "cheques" ADD CONSTRAINT "cheques_supplierId_fkey" FOREIGN KEY ("supplierId") REFERENCES "suppliers"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "cheques" ADD CONSTRAINT "cheques_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "customers"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "cheques" ADD CONSTRAINT "cheques_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "cheques" ADD CONSTRAINT "cheques_updatedById_fkey" FOREIGN KEY ("updatedById") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "cheque_status_history" ADD CONSTRAINT "cheque_status_history_chequeId_fkey" FOREIGN KEY ("chequeId") REFERENCES "cheques"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "cheque_status_history" ADD CONSTRAINT "cheque_status_history_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "users" ADD CONSTRAINT "users_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -1272,19 +1575,52 @@ ALTER TABLE "role_permissions" ADD CONSTRAINT "role_permissions_roleId_fkey" FOR
 ALTER TABLE "role_permissions" ADD CONSTRAINT "role_permissions_permissionId_fkey" FOREIGN KEY ("permissionId") REFERENCES "permissions"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "parts" ADD CONSTRAINT "parts_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "parts" ADD CONSTRAINT "parts_brandId_fkey" FOREIGN KEY ("brandId") REFERENCES "Brand"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "parts" ADD CONSTRAINT "parts_defaultPurchaseUnitId_fkey" FOREIGN KEY ("defaultPurchaseUnitId") REFERENCES "units"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "parts" ADD CONSTRAINT "parts_defaultSalesUnitId_fkey" FOREIGN KEY ("defaultSalesUnitId") REFERENCES "units"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "parts" ADD CONSTRAINT "parts_baseUnitId_fkey" FOREIGN KEY ("baseUnitId") REFERENCES "part_units"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "parts" ADD CONSTRAINT "parts_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "parts" ADD CONSTRAINT "parts_updatedById_fkey" FOREIGN KEY ("updatedById") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "part_units" ADD CONSTRAINT "part_units_partId_fkey" FOREIGN KEY ("partId") REFERENCES "parts"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "part_units" ADD CONSTRAINT "part_units_partId_fkey" FOREIGN KEY ("partId") REFERENCES "parts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "part_units" ADD CONSTRAINT "part_units_unitId_fkey" FOREIGN KEY ("unitId") REFERENCES "units"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "warehouses" ADD CONSTRAINT "warehouses_branchId_fkey" FOREIGN KEY ("branchId") REFERENCES "branches"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "bins" ADD CONSTRAINT "bins_warehouseId_fkey" FOREIGN KEY ("warehouseId") REFERENCES "warehouses"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "stock_lots" ADD CONSTRAINT "stock_lots_partId_fkey" FOREIGN KEY ("partId") REFERENCES "parts"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "stock_lots" ADD CONSTRAINT "stock_lots_partUnitId_fkey" FOREIGN KEY ("partUnitId") REFERENCES "part_units"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "stock_lots" ADD CONSTRAINT "stock_lots_warehouseId_fkey" FOREIGN KEY ("warehouseId") REFERENCES "warehouses"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "stock_lots" ADD CONSTRAINT "stock_lots_binId_fkey" FOREIGN KEY ("binId") REFERENCES "bins"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "stock_lots" ADD CONSTRAINT "stock_lots_purchaseInvoiceItemId_fkey" FOREIGN KEY ("purchaseInvoiceItemId") REFERENCES "purchase_invoice_items"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "current_stocks" ADD CONSTRAINT "current_stocks_partId_fkey" FOREIGN KEY ("partId") REFERENCES "parts"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -1309,6 +1645,9 @@ ALTER TABLE "stock_movements" ADD CONSTRAINT "stock_movements_warehouseId_fkey" 
 
 -- AddForeignKey
 ALTER TABLE "stock_movements" ADD CONSTRAINT "stock_movements_binId_fkey" FOREIGN KEY ("binId") REFERENCES "bins"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "stock_movements" ADD CONSTRAINT "stock_movements_stockLotId_fkey" FOREIGN KEY ("stockLotId") REFERENCES "stock_lots"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "opening_stocks" ADD CONSTRAINT "opening_stocks_partId_fkey" FOREIGN KEY ("partId") REFERENCES "parts"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -1345,6 +1684,12 @@ ALTER TABLE "customer_vehicles" ADD CONSTRAINT "customer_vehicles_customerId_fke
 
 -- AddForeignKey
 ALTER TABLE "customer_vehicles" ADD CONSTRAINT "customer_vehicles_vehicleModelId_fkey" FOREIGN KEY ("vehicleModelId") REFERENCES "vehicle_models"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "vehicle_models" ADD CONSTRAINT "vehicle_models_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "vehicle_models" ADD CONSTRAINT "vehicle_models_updatedById_fkey" FOREIGN KEY ("updatedById") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "part_vehicle_models" ADD CONSTRAINT "part_vehicle_models_partId_fkey" FOREIGN KEY ("partId") REFERENCES "parts"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -1434,6 +1779,9 @@ ALTER TABLE "sales_invoice_items" ADD CONSTRAINT "sales_invoice_items_partId_fke
 ALTER TABLE "sales_invoice_items" ADD CONSTRAINT "sales_invoice_items_partUnitId_fkey" FOREIGN KEY ("partUnitId") REFERENCES "part_units"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "sales_invoice_items" ADD CONSTRAINT "sales_invoice_items_stockLotId_fkey" FOREIGN KEY ("stockLotId") REFERENCES "stock_lots"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "sales_returns" ADD CONSTRAINT "sales_returns_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "customers"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -1459,6 +1807,9 @@ ALTER TABLE "sales_return_items" ADD CONSTRAINT "sales_return_items_partId_fkey"
 
 -- AddForeignKey
 ALTER TABLE "sales_return_items" ADD CONSTRAINT "sales_return_items_partUnitId_fkey" FOREIGN KEY ("partUnitId") REFERENCES "part_units"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "sales_return_items" ADD CONSTRAINT "sales_return_items_stockLotId_fkey" FOREIGN KEY ("stockLotId") REFERENCES "stock_lots"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "purchase_quotations" ADD CONSTRAINT "purchase_quotations_supplierId_fkey" FOREIGN KEY ("supplierId") REFERENCES "suppliers"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -1557,6 +1908,9 @@ ALTER TABLE "purchase_return_items" ADD CONSTRAINT "purchase_return_items_partId
 ALTER TABLE "purchase_return_items" ADD CONSTRAINT "purchase_return_items_partUnitId_fkey" FOREIGN KEY ("partUnitId") REFERENCES "part_units"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "purchase_return_items" ADD CONSTRAINT "purchase_return_items_stockLotId_fkey" FOREIGN KEY ("stockLotId") REFERENCES "stock_lots"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "grns" ADD CONSTRAINT "grns_supplierId_fkey" FOREIGN KEY ("supplierId") REFERENCES "suppliers"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -1578,6 +1932,9 @@ ALTER TABLE "grn_items" ADD CONSTRAINT "grn_items_partId_fkey" FOREIGN KEY ("par
 ALTER TABLE "grn_items" ADD CONSTRAINT "grn_items_partUnitId_fkey" FOREIGN KEY ("partUnitId") REFERENCES "part_units"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "grn_items" ADD CONSTRAINT "grn_items_stockLotId_fkey" FOREIGN KEY ("stockLotId") REFERENCES "stock_lots"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "delivery_notes" ADD CONSTRAINT "delivery_notes_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "customers"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -1591,6 +1948,9 @@ ALTER TABLE "delivery_note_items" ADD CONSTRAINT "delivery_note_items_partId_fke
 
 -- AddForeignKey
 ALTER TABLE "delivery_note_items" ADD CONSTRAINT "delivery_note_items_partUnitId_fkey" FOREIGN KEY ("partUnitId") REFERENCES "part_units"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "delivery_note_items" ADD CONSTRAINT "delivery_note_items_stockLotId_fkey" FOREIGN KEY ("stockLotId") REFERENCES "stock_lots"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "ledger_groups" ADD CONSTRAINT "ledger_groups_parentId_fkey" FOREIGN KEY ("parentId") REFERENCES "ledger_groups"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -1641,6 +2001,12 @@ ALTER TABLE "payments" ADD CONSTRAINT "payments_supplierId_fkey" FOREIGN KEY ("s
 ALTER TABLE "payments" ADD CONSTRAINT "payments_ledgerId_fkey" FOREIGN KEY ("ledgerId") REFERENCES "ledgers"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "payments" ADD CONSTRAINT "payments_bankAccountId_fkey" FOREIGN KEY ("bankAccountId") REFERENCES "bank_accounts"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "payments" ADD CONSTRAINT "payments_chequeId_fkey" FOREIGN KEY ("chequeId") REFERENCES "cheques"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "payments" ADD CONSTRAINT "payments_purchaseInvoiceId_fkey" FOREIGN KEY ("purchaseInvoiceId") REFERENCES "purchase_invoices"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -1660,6 +2026,12 @@ ALTER TABLE "receipts" ADD CONSTRAINT "receipts_customerId_fkey" FOREIGN KEY ("c
 
 -- AddForeignKey
 ALTER TABLE "receipts" ADD CONSTRAINT "receipts_ledgerId_fkey" FOREIGN KEY ("ledgerId") REFERENCES "ledgers"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "receipts" ADD CONSTRAINT "receipts_bankAccountId_fkey" FOREIGN KEY ("bankAccountId") REFERENCES "bank_accounts"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "receipts" ADD CONSTRAINT "receipts_chequeId_fkey" FOREIGN KEY ("chequeId") REFERENCES "cheques"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "receipts" ADD CONSTRAINT "receipts_salesInvoiceId_fkey" FOREIGN KEY ("salesInvoiceId") REFERENCES "sales_invoices"("id") ON DELETE SET NULL ON UPDATE CASCADE;

@@ -1,7 +1,7 @@
 // packages/shared/src/index.ts
 
 // Export all types
-export * from './types';
+export * from './typesold';
 
 // Re-export commonly used types for convenience
 export type {
@@ -25,4 +25,4 @@ export type {
   AuthErrorCode,
   FlatUserPermissions,
   ApiResponse,
-} from './types';
+} from './typesold';
